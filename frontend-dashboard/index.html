@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NER-Lifeline | Central Command Dashboard</title>
+  <meta name="description" content="Hazard-aware spatial logistics command center for India's North Eastern Region supply corridors">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/dashboard-static/styles.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ─── Header ─── -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="logo-icon">NL</div>
+      <div>
+        <h1 data-i18n="dash_title">NER-LIFELINE</h1>
+      </div>
+    </div>
+    <div class="header-meta">
+      <!-- Language Selector -->
+      <select id="lang-select" class="lang-select" onchange="setLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="as">অসমীয়া</option>
+        <option value="bn">বাংলা</option>
+      </select>
+      <div id="sim-badge" class="sim-badge state-normal">
+        <span class="status-dot"></span>
+        <span id="sim-badge-text" data-i18n="status_normal">NORMAL OPS</span>
+      </div>
+      <div class="header-clock" id="header-clock">--:--:-- IST</div>
+    </div>
+  </header>
+
+  <!-- ─── Main Content ─── -->
+  <div class="app-main">
+
+    <!-- ─── Sidebar ─── -->
+    <aside class="sidebar" id="sidebar">
+      
+      <!-- Report Emergency Button -->
+      <button class="btn btn-danger" onclick="openReportModal()" style="margin-bottom: 4px; padding: 12px; font-size: 13px;">
+        <span data-i18n="btn_report_nav">🚨 Report Emergency</span>
+      </button>
+
+      <!-- District Isolation Card -->
+      <div class="card" id="isolation-card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="card_isolation">District Isolation — Barak Valley</span>
+          <span class="card-icon">📡</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_corridor">Corridor Status</span>
+          <span id="isolation-badge" class="badge badge-ok">NORMAL</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_lifelines">Active Lifelines</span>
+          <span id="active-lifelines" class="stat-value" style="font-size: 11px; text-align: right; max-width: 55%;">NH6, NH27</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_precip">Precipitation</span>
+          <span id="weather-rain" class="stat-value">-- mm/hr</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_soil">Soil Saturation</span>
+          <span id="weather-soil" class="stat-value amber">--%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_mvi">Vulnerability Index</span>
+          <span id="weather-mvi" class="stat-value">--</span>
+        </div>
+      </div>
+
+
+
+      <!-- Active Convoy -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="card_convoy">Active Supply Convoy</span>
+          <span class="card-icon">🚛</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_origin">Origin</span>
+          <span class="stat-value">Guwahati Depot</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_dest">Destination</span>
+          <span class="stat-value">Silchar Hospital</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_priority">Cargo Priority</span>
+          <span class="stat-value emerald" id="convoy-cargo" data-i18n="cargo_medical">Critical Medical</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_dist">Route Distance</span>
+          <span class="stat-value" id="convoy-dist">Calculating...</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="lbl_eta">ETA</span>
+          <span class="stat-value" id="convoy-eta">--</span>
+        </div>
+
+        <!-- Cargo Selector -->
+        <div style="margin-top: 10px;">
+          <div class="card-title" style="margin-bottom: 6px;">Cargo Profile</div>
+          <div class="cargo-grid">
+            <div class="cargo-option selected" data-cargo="critical_medical" id="cargo-critical_medical">
+              <span class="cargo-icon">💉</span>
+              <span class="cargo-label i18n-text" data-i18n="cargo_medical">Critical<br>Medical</span>
+            </div>
+            <div class="cargo-option" data-cargo="perishable_food" id="cargo-perishable_food">
+              <span class="cargo-icon">🥬</span>
+              <span class="cargo-label i18n-text" data-i18n="cargo_food">Perishable<br>Food</span>
+            </div>
+            <div class="cargo-option" data-cargo="petroleum" id="cargo-petroleum">
+              <span class="cargo-icon">⛽</span>
+              <span class="cargo-label i18n-text" data-i18n="cargo_fuel">Petroleum<br>Tanker</span>
+            </div>
+            <div class="cargo-option" data-cargo="general_freight" id="cargo-general_freight">
+              <span class="cargo-icon">📦</span>
+              <span class="cargo-label i18n-text" data-i18n="cargo_freight">General<br>Freight</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Vehicle Configuration (Vahan API) -->
+        <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+          <div class="card-title" style="margin-bottom: 6px;" data-i18n="card_vahan">Vehicle Configuration (Vahan API)</div>
+          <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+            <input type="text" id="vahan-reg-no" class="modal-input" placeholder="e.g. AS-01-XX-1234" style="flex: 1; padding: 6px 10px; font-size: 12px; font-family: monospace;">
+            <button class="btn btn-primary" id="vahan-fetch-btn" onclick="fetchVahanData()" style="padding: 6px 12px; font-size: 12px;">Fetch</button>
+          </div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">Use <strong>AS01</strong> for HCV, <strong>ML05</strong> for MCV, or manually override below.</div>
+          <div style="display: flex; gap: 5px;">
+            <select id="vahan-vehicle-class" class="modal-input" style="flex: 1; padding: 6px; font-size: 12px;" onchange="handleManualVehicleChange()">
+              <option value="LCV">Light Commercial (LCV)</option>
+              <option value="MCV">Medium Commercial (MCV)</option>
+              <option value="HCV">Heavy Commercial (HCV)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SRI 2.0 (Supply Runway Index) -->
+      <div class="card" id="sri-card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="card_sri">Supply Runway Index (SRI)</span>
+          <span class="card-icon">⏱️</span>
+        </div>
+        <div class="sri-bars">
+          <!-- Oxygen -->
+          <div class="sri-bar-item" id="sri-item-medical">
+            <div class="sri-bar-header">
+              <span class="sri-bar-label" data-i18n="lbl_oxygen">Medical Oxygen</span>
+              <span class="sri-bar-value" id="sri-val-oxygen">8 Days</span>
+            </div>
+            <div class="sri-progress-track">
+              <div class="sri-progress-fill emerald" id="sri-fill-oxygen" style="width: 80%"></div>
+            </div>
+            <div class="sri-bar-footer" id="sri-incoming-medical"></div>
+          </div>
+          <!-- Fuel -->
+          <div class="sri-bar-item" id="sri-item-fuel">
+            <div class="sri-bar-header">
+              <span class="sri-bar-label" data-i18n="lbl_fuel">Petroleum Fuel</span>
+              <span class="sri-bar-value" id="sri-val-fuel">14 Days</span>
+            </div>
+            <div class="sri-progress-track">
+              <div class="sri-progress-fill emerald" id="sri-fill-fuel" style="width: 100%"></div>
+            </div>
+            <div class="sri-bar-footer" id="sri-incoming-fuel"></div>
+          </div>
+          <!-- Food -->
+          <div class="sri-bar-item" id="sri-item-food">
+            <div class="sri-bar-header">
+              <span class="sri-bar-label" data-i18n="lbl_food">Essential Grains</span>
+              <span class="sri-bar-value" id="sri-val-food">5 Days</span>
+            </div>
+            <div class="sri-progress-track">
+              <div class="sri-progress-fill amber" id="sri-fill-food" style="width: 50%"></div>
+            </div>
+            <div class="sri-bar-footer" id="sri-incoming-food"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Panel -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" data-i18n="card_sim">Disaster Simulation Engine</span>
+          <span class="card-icon">⚡</span>
+        </div>
+        <div class="sim-panel">
+          <button class="sim-btn active" data-preset="normal_baseline" id="sim-normal_baseline" onclick="activateSimulation('normal_baseline')">
+            <div class="sim-indicator green"></div>
+            <div class="sim-text">
+              <span class="sim-name" data-i18n="sim_normal">Normal Baseline</span>
+              <span class="sim-desc" data-i18n="sim_normal_desc">All corridors operational</span>
+            </div>
+          </button>
+          <button class="sim-btn" data-preset="monsoon_heavy" id="sim-monsoon_heavy" onclick="activateSimulation('monsoon_heavy')">
+            <div class="sim-indicator amber"></div>
+            <div class="sim-text">
+              <span class="sim-name" data-i18n="sim_monsoon">Monsoon Heavy Rain</span>
+              <span class="sim-desc" data-i18n="sim_monsoon_desc">140 mm/hr at Sonapur – CAUTION</span>
+            </div>
+          </button>
+          <button class="sim-btn" data-preset="nh6_collapse" id="sim-nh6_collapse" onclick="activateSimulation('nh6_collapse')">
+            <div class="sim-indicator red"></div>
+            <div class="sim-text">
+              <span class="sim-name" data-i18n="sim_collapse">NH6 Sonapur Collapse</span>
+              <span class="sim-desc" data-i18n="sim_collapse_desc">Corridor severed – Barak isolated</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+
+
+    </aside>
+
+    <!-- ─── Map ─── -->
+    <div class="map-container" id="map-container">
+      <div id="map"></div>
+      
+      <!-- Glass HUD Overlay for Feeds -->
+      <div class="map-hud">
+        <div class="hud-card">
+          <div class="hud-header">
+            <span class="card-title" data-i18n="card_alerts">Automated Official Alerts</span>
+            <span class="card-icon">📡</span>
+          </div>
+          <div class="alert-dispatch-log hud-content" id="alert-dispatch-log">
+            <div class="feed-empty">No active dispatch alerts.</div>
+          </div>
+        </div>
+
+        <div class="hud-card">
+          <div class="hud-header">
+            <span class="card-title" data-i18n="card_feed">Ground Incident Feed</span>
+            <span class="card-icon">📋</span>
+          </div>
+          <div class="incident-feed hud-content" id="incident-feed">
+            <div class="feed-empty">All strategic corridors clear.</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Commodity Spoilage Optimizer Modal (Hidden by default) -->
+      <div class="spoilage-modal" id="spoilage-modal">
+        <div class="spoilage-header">
+          <span>⚠️ CRITICAL SPOILAGE RISK DETECTED</span>
+        </div>
+        <div class="spoilage-body">
+          <p>Route ETA (<span id="spoilage-eta"></span> hrs) exceeds commodity shelf-life (<span id="spoilage-shelf"></span> hrs).</p>
+          <p><strong>Recommendation:</strong> <span id="spoilage-action"></span></p>
+        </div>
+        <button class="btn btn-primary" onclick="closeSpoilageModal()">Acknowledge & Divert</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Alert Ticker ─── -->
+  <style>
+    @keyframes fadeOutNew {
+      0% { opacity: 1; transform: scale(1.1); }
+      80% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+    .new-tag {
+      background: var(--accent-rose);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+      animation: fadeOutNew 5s forwards;
+    }
+  </style>
+  <div class="alert-ticker">
+    <span class="ticker-label">MULTILINGUAL ALERT</span>
+    <div class="ticker-content">
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+  </div>
+
+  <!-- ─── Report Modal Overlay ─── -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 data-i18n="modal_title">🚨 Command Center Emergency Override</h3>
+        <button class="modal-close" onclick="closeReportModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="dash-incident-form" onsubmit="submitDashIncident(event)">
+          <div class="form-group">
+            <label data-i18n="lbl_hazard">Hazard Type</label>
+            <select id="modal-hazard" class="modal-input" required>
+              <option value="landslide" data-i18n="opt_landslide">Landslide / Rockfall</option>
+              <option value="flash_flood" data-i18n="opt_flood">Flash Flood</option>
+              <option value="bridge_damage" data-i18n="opt_bridge">Bridge Failure</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label data-i18n="lbl_severity">Severity Impact</label>
+            <select id="modal-severity" class="modal-input" required>
+              <option value="BLOCK">🔴 Total Blockade</option>
+              <option value="CAUTION">🟡 Single-Lane / Caution</option>
+            </select>
+          </div>
+          <!-- Map Location Picker -->
+          <div class="form-group">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+              <label style="display:flex; align-items:center; gap:6px; margin-bottom:0; text-transform:none;">
+                <span>📍 Incident Location</span>
+                <span id="location-pick-hint" style="font-size:10px; color:var(--accent-amber); font-weight:500; background:rgba(245,158,11,0.1); padding:2px 7px; border-radius:4px; border:1px solid rgba(245,158,11,0.25); white-space:nowrap;">Click map to pin</span>
+              </label>
+              <button type="button" id="btn-use-convoy-pos" onclick="useConvoyPosition()" style="padding:4px 10px; font-size:10px; white-space:nowrap; flex-shrink:0; width:auto; line-height:1.2;" class="btn btn-primary" title="Snap to convoy's current position">
+                🚛 Use Convoy Pos
+              </button>
+            </div>
+            <div id="report-location-picker" style="width:100%; height:220px; border-radius:var(--radius-md); border:1px solid var(--border-primary); overflow:hidden; margin-bottom:8px; position:relative; background:var(--bg-secondary);"></div>
+            <div style="display:flex; gap:8px;">
+              <div style="flex:1;">
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:3px;">Latitude</div>
+                <input type="text" id="modal-lat" class="modal-input" readonly placeholder="Click map to set" style="font-family:var(--font-mono); font-size:12px;">
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:3px;">Longitude</div>
+                <input type="text" id="modal-lon" class="modal-input" readonly placeholder="Click map to set" style="font-family:var(--font-mono); font-size:12px;">
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-submit-dash" style="margin-top: 10px;">
+            <span data-i18n="btn_submit_report">Submit Incident</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/dashboard-static/i18n.js"></script>
+<script src="/dashboard-static/app.js"></script>
+
+</body>
+</html>

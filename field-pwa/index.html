@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NER Ground Patrol | Field Incident Reporter</title>
+  <meta name="description" content="Offline-first field incident reporting for NER ground patrol officers">
+  <meta name="theme-color" content="#0ea5e9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/field-static/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Theme Variables: Dark (Default) */
+    :root {
+      --bg: #060a14;
+      --bg-card: rgba(12, 18, 34, 0.88);
+      --bg-input: rgba(15, 23, 42, 0.7);
+      --border: rgba(56, 189, 248, 0.12);
+      --border-focus: rgba(6, 182, 212, 0.5);
+      --cyan: #06b6d4;
+      --sky: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --violet: #8b5cf6;
+      --text: #f1f5f9;
+      --text-sec: #cbd5e1;
+      --text-muted: #64748b;
+      --radius: 12px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    /* Theme Variables: Light Mode */
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-input: #f1f5f9;
+      --border: #e2e8f0;
+      --border-focus: #0ea5e9;
+      --text: #0f172a;
+      --text-sec: #334155;
+      --text-muted: #64748b;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ── App Container ── */
+    .app {
+      max-width: 440px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 0 env(safe-area-inset-bottom) 0;
+    }
+
+    /* ── App Bar ── */
+    .app-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+
+    .app-bar-left h1 {
+      font-size: 16px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--emerald));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
+    }
+
+    .app-bar-left .org {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 1px;
+    }
+
+    /* Header Controls */
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lang-select {
+      background: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px;
+      font-family: var(--font);
+      font-size: 10px;
+      outline: none;
+    }
+    .theme-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* ── Network Status Bar ── */
+    .net-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 16px 0;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid;
+      transition: all 0.3s ease;
+    }
+
+    .net-bar.online { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.25); }
+    .net-bar.offline { background: rgba(244, 63, 94, 0.08); border-color: rgba(244, 63, 94, 0.25); animation: pulse-border 2s ease-in-out infinite; }
+
+    .net-info { display: flex; align-items: center; gap: 10px; }
+    .net-dot { width: 8px; height: 8px; border-radius: 50%; transition: background 0.3s ease; }
+    .online .net-dot { background: var(--emerald); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+    .offline .net-dot { background: var(--rose); box-shadow: 0 0 8px rgba(244,63,94,0.5); animation: blink 1.2s infinite; }
+    .net-text { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+    .online .net-text { color: var(--emerald); }
+    .offline .net-text { color: var(--rose); }
+
+    .queue-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--mono);
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--sky);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    /* ── Offline Toggle ── */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 10px 16px; padding: 10px 14px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .btn-submit.loading { background: var(--border); color: var(--text-muted); pointer-events: none; }
+
+    /* Map */
+    #pwa-map {
+      width: 100%;
+      height: 200px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+      z-index: 1; /* Below the modal headers */
+    }
+    .map-tiles { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+    html[data-theme="light"] .map-tiles { filter: none; }
+    .toggle-label { font-size: 12px; color: var(--text-sec); font-weight: 500; }
+    .toggle-switch {
+      position: relative; width: 44px; height: 24px; background: rgba(51, 65, 85, 0.4);
+      border-radius: 12px; cursor: pointer; transition: background 0.3s ease;
+      border: 1px solid rgba(51, 65, 85, 0.3);
+    }
+    .toggle-switch.active { background: rgba(244, 63, 94, 0.3); border-color: rgba(244, 63, 94, 0.4); }
+    .toggle-knob {
+      position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: white;
+      border-radius: 50%; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .toggle-switch.active .toggle-knob { transform: translateX(20px); background: var(--rose); }
+
+    /* ── Content ── */
+    .content { flex: 1; padding: 6px 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Cards ── */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; backdrop-filter: blur(12px); }
+    .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); margin-bottom: 14px; }
+
+    /* ── Form ── */
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; margin-top: 12px; }
+    label:first-of-type { margin-top: 0; }
+
+    .hazard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .hazard-option {
+      display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 6px;
+      border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg-input);
+      cursor: pointer; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent;
+    }
+    .hazard-option.selected { border-color: var(--cyan); background: rgba(6, 182, 212, 0.08); }
+    .hazard-icon { font-size: 24px; }
+    .hazard-name { font-size: 10px; font-weight: 600; color: var(--text-sec); text-align: center; line-height: 1.2; }
+
+    .severity-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .severity-btn {
+      display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px;
+      border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg-input);
+      cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-sec); -webkit-tap-highlight-color: transparent;
+    }
+    .severity-btn.selected.block { border-color: var(--rose); background: rgba(244, 63, 94, 0.1); color: var(--rose); }
+    .severity-btn.selected.caution { border-color: var(--amber); background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+
+    .gps-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+    input[type="text"], textarea, select {
+      width: 100%; padding: 11px 14px; background: var(--bg-input); border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+    textarea { font-family: var(--font); resize: vertical; min-height: 60px; }
+
+    .gps-detect-btn { padding: 11px 14px; background: rgba(6, 182, 212, 0.1); border: 1.5px solid rgba(6, 182, 212, 0.25); border-radius: 10px; color: var(--cyan); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+
+    .photo-input-wrapper { position: relative; overflow: hidden; border-radius: 10px; }
+    .photo-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px;
+      background: var(--bg-input); border: 1.5px dashed rgba(51, 65, 85, 0.4); border-radius: 10px; color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 500;
+    }
+    .photo-btn.has-photo { border-color: var(--emerald); color: var(--emerald); border-style: solid; }
+    .photo-input-wrapper input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 200px; }
+
+    .submit-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--cyan), #0891b2);
+      color: white; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px;
+    }
+    .submit-btn.success { background: linear-gradient(135deg, var(--emerald), #059669); }
+    
+    .queue-panel { border: 1px dashed rgba(56, 189, 248, 0.2); }
+    .queue-list { display: flex; flex-direction: column; gap: 6px; }
+    .queue-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg-input); border-radius: 8px; font-size: 12px; }
+    .queue-item-icon { font-size: 14px; }
+    .queue-item-text { flex: 1; color: var(--text-sec); }
+    .queue-item-time { font-family: var(--mono); font-size: 10px; color: var(--text-muted); }
+    .queue-empty { text-align: center; padding: 14px; color: var(--text-muted); font-size: 12px; }
+    
+    .sync-btn {
+      width: 100%; padding: 11px; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px;
+      background: rgba(16, 185, 129, 0.1); color: var(--emerald); font-weight: 700; cursor: pointer; margin-top: 10px;
+    }
+
+    .history-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .history-item:last-child { border-bottom: none; }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    @keyframes pulse-border { 0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } 50% { box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1); } }
+
+    /* SOS Modal */
+    .sos-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8); z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+      padding: 20px; backdrop-filter: blur(5px);
+    }
+    .sos-modal-overlay.active { display: flex; }
+    .sos-modal {
+      background: var(--bg-card); border: 2px solid var(--rose);
+      border-radius: var(--radius); padding: 20px; width: 100%;
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+    }
+    .sos-title { color: var(--rose); font-size: 18px; font-weight: 800; text-align: center; margin-bottom: 15px; }
+    .sos-guidelines { font-size: 13px; line-height: 1.5; color: var(--text); margin-bottom: 20px; }
+    .sos-guidelines ul { margin-left: 20px; margin-top: 10px; color: var(--text-sec); }
+    .sos-guidelines li { margin-bottom: 8px; }
+    
+    .sos-checkbox-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 8px;
+      margin-bottom: 12px; margin-top: 10px; cursor: pointer;
+    }
+    .sos-checkbox-row input { width: 18px; height: 18px; accent-color: var(--rose); }
+    .sos-checkbox-row label { margin: 0; color: var(--rose); font-size: 13px; cursor: pointer; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="app-bar">
+    <div class="app-bar-left">
+      <h1 data-i18n="app_title">NER GROUND PATROL</h1>
+      <div class="org" data-i18n="app_org">BRO / PWD Field Incident Unit</div>
+    </div>
+    <div class="header-controls">
+      <select id="lang-select" class="lang-select" onchange="setLanguage(this.value)">
+        <option value="en">EN</option>
+        <option value="hi">HI</option>
+        <option value="as">AS</option>
+        <option value="bn">BN</option>
+      </select>
+      <button class="theme-btn" onclick="toggleTheme()">☀️</button>
+    </div>
+  </header>
+
+  <div class="net-bar online" id="net-bar">
+    <div class="net-info">
+      <div class="net-dot"></div>
+      <span class="net-text" id="net-text" data-i18n="net_online">ONLINE — CONNECTED</span>
+    </div>
+    <div class="queue-badge">
+      <span data-i18n="lbl_queued">Queued:</span>
+      <span id="queue-count">0</span>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <span class="toggle-label" data-i18n="toggle_offline">Simulate Zero-Connectivity Mode</span>
+    <div class="toggle-switch" id="offline-toggle" onclick="toggleOfflineMode()">
+      <div class="toggle-knob"></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="card">
+      <div class="card-title" data-i18n="card_new">📝 New Incident Report</div>
+
+      <form id="incident-form">
+        <!-- Mini Map -->
+        <div id="pwa-map"></div>
+
+        <label data-i18n="lbl_hazard">Hazard Type</label>
+        <div class="hazard-grid">
+          <div class="hazard-option selected" data-type="landslide" onclick="selectHazard(this)">
+            <span class="hazard-icon">🏔️</span>
+            <span class="hazard-name" data-i18n="haz_landslide">Landslide<br>Rockfall</span>
+          </div>
+          <div class="hazard-option" data-type="flash_flood" onclick="selectHazard(this)">
+            <span class="hazard-icon">🌊</span>
+            <span class="hazard-name" data-i18n="haz_flood">Flash<br>Flood</span>
+          </div>
+          <div class="hazard-option" data-type="bridge_damage" onclick="selectHazard(this)">
+            <span class="hazard-icon">🌉</span>
+            <span class="hazard-name" data-i18n="haz_bridge">Bridge<br>Failure</span>
+          </div>
+          <div class="hazard-option" data-type="other" onclick="selectHazard(this)">
+            <span class="hazard-icon">⚠️</span>
+            <span class="hazard-name" data-i18n="haz_other">Other<br>Incident</span>
+          </div>
+        </div>
+
+        <label data-i18n="lbl_severity">Severity Impact</label>
+        <div class="severity-group">
+          <div class="severity-btn selected block" data-sev="BLOCK" onclick="selectSeverity(this)">
+            <span data-i18n="sev_block">🔴 Total Blockade</span>
+          </div>
+          <div class="severity-btn caution" data-sev="CAUTION" onclick="selectSeverity(this)">
+            <span data-i18n="sev_caution">🟡 Single-Lane</span>
+          </div>
+        </div>
+
+        <label data-i18n="lbl_gps">GPS Coordinates</label>
+        <div class="gps-row">
+          <input type="text" id="inp-lat" value="25.0180" data-i18n="inp_lat" placeholder="Latitude" readonly style="opacity:0.8;">
+          <input type="text" id="inp-lon" value="92.4150" data-i18n="inp_lon" placeholder="Longitude" readonly style="opacity:0.8;">
+          <button type="button" class="gps-detect-btn" onclick="detectGPS()">📍</button>
+        </div>
+
+        <label data-i18n="lbl_notes">Incident Notes</label>
+        <textarea id="inp-desc" data-i18n="inp_notes" placeholder="e.g., Heavy slope failure..."></textarea>
+
+        <label data-i18n="lbl_photo">Evidence Photo</label>
+        <div class="photo-input-wrapper">
+          <div class="photo-btn" id="photo-label" data-i18n="btn_photo">📷 Tap to Capture Photo</div>
+          <input type="file" accept="image/*" capture="environment" id="inp-photo" onchange="handlePhoto(this)">
+        </div>
+
+        <div class="sos-checkbox-row" onclick="document.getElementById('inp-sos').click()">
+          <input type="checkbox" id="inp-sos" onclick="event.stopPropagation()">
+          <label for="inp-sos">🚨 Request Emergency Evacuation (SOS)</label>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">
+          <span data-i18n="btn_submit">⚡ Log Incident Report</span>
+        </button>
+      </form>
+    </div>
+
+    <div class="card queue-panel" id="queue-card">
+      <div class="card-title" data-i18n="card_queue">📡 Offline Sync Queue</div>
+      <div class="queue-list" id="queue-list">
+        <div class="queue-empty" data-i18n="queue_empty">No pending incidents. All synced. ✅</div>
+      </div>
+      <button class="sync-btn" id="sync-btn" onclick="manualSync()" disabled>
+        <span data-i18n="btn_sync">🔄 Force Sync Now</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-i18n="card_history">✅ Recently Synced</div>
+      <div id="history-list">
+        <div class="queue-empty" data-i18n="history_empty">No recent syncs.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SOS Survival Guide Modal -->
+<div class="sos-modal-overlay" id="sos-modal">
+  <div class="sos-modal">
+    <div class="sos-title">🚨 SOS DISPATCHED</div>
+    <div class="sos-guidelines">
+      Your emergency request has been queued. Help is on the way. 
+      
+      <div style="margin: 15px 0; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--emerald); border-radius: 8px; text-align: center;">
+        <div style="font-weight: 800; color: var(--emerald); font-size: 14px; margin-bottom: 5px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 10px; height: 10px; background: var(--emerald); border-radius: 50%; animation: blink 1s infinite;"></span>
+          AIS-140 / BLE TRACKING ACTIVE
+        </div>
+        <div style="font-size: 11px; color: var(--text-sec); font-family: var(--mono);">Broadcasting mesh beacon to nearby NDRF units...</div>
+      </div>
+
+      <strong>Offline Survival Guidelines:</strong>
+      <ul>
+        <li>Move to higher ground immediately.</li>
+        <li>Do not attempt to cross moving water or debris.</li>
+        <li>Preserve your device battery (turn down brightness).</li>
+        <li>Stay near your vehicle to maintain BLE mesh connectivity.</li>
+      </ul>
+    </div>
+    <button class="submit-btn" style="background: var(--rose);" onclick="closeSOSModal()">Acknowledge & Close</button>
+  </div>
+</div>
+
+<script src="/field-static/i18n.js"></script>
+<script src="/field-static/app.js"></script>
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    const isLight = root.getAttribute('data-theme') === 'light';
+    root.setAttribute('data-theme', isLight ? 'dark' : 'light');
+    document.querySelector('.theme-btn').textContent = isLight ? '☀️' : '🌙';
+  }
+</script>
+
+</body>
+</html>
