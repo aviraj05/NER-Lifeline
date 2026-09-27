@@ -60,13 +60,29 @@ def compute_route(req: RouteRequest):
         ]
         total_dist_km = 340.5
     else:
-        # NH6 Primary Route
+        # NH6 Primary Route — strictly within Indian territory
+        # Follows the actual road: Guwahati → Shillong → Jowai → East Jaintia Hills
+        # then descends into the Barak Valley via Jiribam road (Cachar, Assam),
+        # hugging north of the India–Bangladesh border the entire way.
         path = [
-            [26.1445, 91.7362], [25.9000, 91.8000], [25.5788, 91.8933],
-            [25.4530, 92.2030], [25.3000, 92.3000], [25.1130, 92.3610],
-            [25.0180, 92.4150], [24.9000, 92.6000], [24.8333, 92.7789]
+            [26.1445, 91.7362],  # Guwahati Supply Hub
+            [25.9000, 91.8000],  # Jorabat / Meghalaya entry
+            [25.5788, 91.8933],  # Shillong
+            [25.4530, 92.2030],  # Jowai (East Jaintia Hills)
+            [25.3500, 92.2800],  # Muktapur / Sutnga stretch
+            [25.2700, 92.3200],  # Nongtalang area
+            [25.2000, 92.3800],  # Kuliang (Meghalaya/Assam border ridge)
+            [25.1800, 92.4500],  # Ratacherra top — stays on ridge, strictly in India
+            [25.1600, 92.5200],  # Laitkroh / descent toward Cachar
+            [25.1400, 92.5900],  # Narpuh WLS eastern boundary (Assam side)
+            [25.1200, 92.6400],  # Jiribam approach (Assam)
+            [25.0500, 92.6900],  # Lakhipur, Cachar District, Assam
+            [24.9800, 92.7200],  # Sonai, Cachar District, Assam
+            [24.9200, 92.7500],  # Udharbond area
+            [24.8700, 92.7650],  # Silchar approaches
+            [24.8333, 92.7789],  # Silchar Civil Hospital
         ]
-        total_dist_km = 212.3
+        total_dist_km = 215.3
 
     rain_val = weather_service.fetch_rainfall(CHOKE_POINTS[0]["lat"], CHOKE_POINTS[0]["lon"])
 

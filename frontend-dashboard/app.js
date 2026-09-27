@@ -73,7 +73,7 @@ L.marker(SILCHAR, { icon: silcharIcon })
 // ─── Choke Point Markers ───────────────────────────────────────────
 const CHOKE_POINTS = [
   { name: 'Sonapur Tunnel (NH6)', lat: 25.1130, lon: 92.3610 },
-  { name: 'Kuliang-Ratacherra', lat: 25.0180, lon: 92.4150 },
+  { name: 'Kuliang-Ratacherra', lat: 25.2000, lon: 92.3800 },
   { name: 'Jatinga-Haflong (NH27)', lat: 25.1850, lon: 93.0050 },
 ];
 

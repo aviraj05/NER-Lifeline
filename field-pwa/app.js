@@ -327,7 +327,7 @@ function mockGPS() {
   // Simulate coordinates along the NER corridor
   const points = [
     [25.1130, 92.3610], // Sonapur
-    [25.0180, 92.4150], // Kuliang
+    [25.2000, 92.3800], // Kuliang-Ratacherra
     [25.4530, 92.2030], // Jowai
     [25.5788, 91.8933], // Shillong
   ];
@@ -599,8 +599,7 @@ if ('serviceWorker' in navigator) {
 
 // ─── Initialize Map ────────────────────────────────────────────────
 function initMap() {
-  // Center near Sonapur / NH6
-  pwaMap = L.map('pwa-map', { zoomControl: false }).setView([25.0180, 92.4150], 12);
+  pwaMap = L.map('pwa-map', { zoomControl: false }).setView([25.2000, 92.3800], 12);
 
   // Use OSM with a dark filter (simulated via CSS invert later, or just base Carto)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -609,7 +608,7 @@ function initMap() {
   }).addTo(pwaMap);
 
   // Add the user's reporting location marker
-  userMarker = L.marker([25.0180, 92.4150]).addTo(pwaMap);
+  userMarker = L.marker([25.2000, 92.3800]).addTo(pwaMap);
 }
 
 function updateMapLocation(lat, lon) {

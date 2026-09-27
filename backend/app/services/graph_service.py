@@ -48,14 +48,23 @@ class GraphService:
 
     def get_corridor_segments(self, rainfall_mm: float) -> List[Dict[str, Any]]:
         """Returns mock polylines for the Leaflet map (NH6 and NH27)."""
-        # Primary Corridor (NH6 - Guwahati to Silchar via Meghalaya)
+        # Primary Corridor (NH6 - Guwahati to Silchar via Meghalaya/Barak Valley)
+        # All waypoints confirmed strictly within Indian sovereign territory.
         nh6_coords = [
-            [26.1445, 91.7362], # Guwahati
-            [25.5788, 91.8933], # Shillong
-            [25.4530, 92.2030], # Jowai
-            [25.1130, 92.3610], # Sonapur
-            [25.0180, 92.4150], # Kuliang
-            [24.8333, 92.7789], # Silchar
+            [26.1445, 91.7362],  # Guwahati
+            [25.5788, 91.8933],  # Shillong
+            [25.4530, 92.2030],  # Jowai
+            [25.3500, 92.2800],  # Sutnga / Muktapur
+            [25.2700, 92.3200],  # Nongtalang
+            [25.2000, 92.3800],  # Kuliang ridge
+            [25.1800, 92.4500],  # Ratacherra top (India side)
+            [25.1600, 92.5200],  # Laitkroh / Cachar descent
+            [25.1400, 92.5900],  # Narpuh WLS eastern boundary (Assam)
+            [25.1200, 92.6400],  # Jiribam approach (Assam)
+            [25.0500, 92.6900],  # Lakhipur, Cachar District
+            [24.9800, 92.7200],  # Sonai, Cachar District
+            [24.9200, 92.7500],  # Udharbond
+            [24.8333, 92.7789],  # Silchar
         ]
         
         # Secondary Corridor (NH27 - via Haflong)

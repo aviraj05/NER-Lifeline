@@ -29,8 +29,8 @@ CHOKE_POINTS = [
     {
         "id": "cp_kuliang",
         "name": "Kuliang-Ratacherra Stretch",
-        "lat": 25.0180,
-        "lon": 92.4150,
+        "lat": 25.2000,
+        "lon": 92.3800,
         "radius_deg": 0.18,
         "elevation_m": 640.0,
         "highway": "NH6",
@@ -146,8 +146,8 @@ SIMULATION_PRESETS = {
             },
             {
                 "incident_type": "landslide",
-                "latitude": 25.0180,
-                "longitude": 92.4150,
+                "latitude": 25.2000,
+                "longitude": 92.3800,
                 "severity": "BLOCK",
                 "description": "Secondary slope failure at Kuliang-Ratacherra. Corridor severed at two points.",
                 "reporter_name": "PWD Structural Unit",
