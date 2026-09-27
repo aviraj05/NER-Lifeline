@@ -1,5 +1,16 @@
 __pycache__/
 .assets/
 .cache/
+cache/
+assets/
+docs/
 *.pyc
 *.osm.pbf
+*.pbf
+*.graphml
+*.png
+*.mp4
+*.mp3
+*.pdf
+*.pptx
+*.docx
